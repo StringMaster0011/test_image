@@ -1,13 +1,22 @@
 import asyncpg
 from .postgres import database
+from fastapi import HTTPException, status
 
 async def insert_item(name: str, description: str) -> int:
-    async with database.pool.acquire() as conn:
-        row = await conn.fetchrow(
-            "INSERT INTO items (name, description) VALUES ($1, $2) RETURNING id",
-            name, description
+    try:
+        async with database.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "INSERT INTO items (name, description) VALUES ($1, $2) RETURNING id",
+                name, description
+            )
+            return row["id"]
+    except HTTPException as e:
+        print("Unexpected error:", e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Something went wrong while creating the item"
         )
-        return row["id"]
+        
 
 async def insert_image_urls(item_id: int, urls: list[str]):
     async with database.pool.acquire() as conn:
